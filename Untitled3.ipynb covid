@@ -1,0 +1,196 @@
+{
+  "nbformat": 4,
+  "nbformat_minor": 0,
+  "metadata": {
+    "colab": {
+      "provenance": [],
+      "authorship_tag": "ABX9TyM25IavDqWVIB+9Lk9VpN59",
+      "include_colab_link": true
+    },
+    "kernelspec": {
+      "name": "python3",
+      "display_name": "Python 3"
+    },
+    "language_info": {
+      "name": "python"
+    }
+  },
+  "cells": [
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "view-in-github",
+        "colab_type": "text"
+      },
+      "source": [
+        "<a href=\"https://colab.research.google.com/github/surajpratapmishra1997/surajpratapmishra1997/blob/main/Untitled3.ipynb%20covid\" target=\"_parent\"><img src=\"https://colab.research.google.com/assets/colab-badge.svg\" alt=\"Open In Colab\"/></a>"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": 26,
+      "metadata": {
+        "id": "5IJfQep6JLL8"
+      },
+      "outputs": [],
+      "source": [
+        "from tensorflow.keras.layers import Input, Lambda, Dense, Flatten, AveragePooling2D, Dropout\n",
+        "from tensorflow.keras.models import Model, load_model\n",
+        "from tensorflow.keras.applications.resnet50 import ResNet50\n",
+        "from tensorflow.keras.applications.resnet50 import preprocess_input\n",
+        "from tensorflow.keras.preprocessing import image\n",
+        "from tensorflow.keras.preprocessing.image import ImageDataGenerator\n",
+        "from sklearn.metrics import confusion_matrix, roc_curve\n",
+        "import seaborn as sns\n",
+        "import numpy as np\n",
+        "import matplotlib.pyplot as plt\n",
+        "import cv2\n",
+        "from glob import glob\n",
+        "from keras.callbacks import ModelCheckpoint, EarlyStopping\n",
+        "from sklearn.model_selection import train_test_split\n",
+        "from sklearn.preprocessing import LabelBinarizer\n",
+        "from tensorflow.keras.utils import to_categorical\n",
+        "      "
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "### Define Few Parameters\""
+      ],
+      "metadata": {
+        "id": "eUAlcklzKeBo"
+      },
+      "execution_count": 27,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# define size to which images are to be resized\n",
+        "IMAGE_SIZE = [224, 224]\n",
+        "# training config:\n",
+        "epochs = 50\n",
+        "batch_size = 8\n",
+        "# define paths\n",
+        "covid_path = '/content/drive/MyDrive/COVID Detection/CT_COVID'\n",
+        "noncovid_path = '/content/drive/MyDrive/COVID Detection/CT_NonCOVID'\n",
+        "# Use glob to grab images from path .jpg or jpeg\n",
+        "covid_files = glob(covid_path + '/*')\n",
+        "noncovid_files = glob(noncovid_path + '/*')\n"
+      ],
+      "metadata": {
+        "id": "JKCcDOXVKeHK"
+      },
+      "execution_count": 28,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# Visualize file variable contents\n",
+        "print(\"First 5 Covid Files: \",covid_files[0:5])\n",
+        "print(\"Total Count: \",len(covid_files))\n",
+        "print(\"First 5 NonCovid Files: \",noncovid_files[0:5])\n",
+        "print(\"Total Count: \",len(noncovid_files))\n",
+        "      "
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "eN5hC5QiL904",
+        "outputId": "79eb2fc0-f9e2-4142-d8be-0d2cc5988ba4"
+      },
+      "execution_count": 29,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "First 5 Covid Files:  []\n",
+            "Total Count:  0\n",
+            "First 5 NonCovid Files:  []\n",
+            "Total Count:  0\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "### \" Fetch Images and Class Labels from Files (This might take a while)\"\n"
+      ],
+      "metadata": {
+        "id": "mRyIhEQaL97K"
+      },
+      "execution_count": 22,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# Fetch Images and Class Labels from Files\\n\",\n",
+        "covid_labels = [],\n",
+        "noncovid_labels = []\n",
+        "covid_images=[]\n",
+        "noncovid_images=[]\n",
+        "for i in range(len(covid_files)):\n",
+        "    image = cv2.imread(covid_files[i]) # read file \n",
+        "    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB) # arrange format as per keras\n",
+        "    image = cv2.resize(image,(224,224)) # resize as per model\n",
+        "    covid_images.append(image) # append image\n",
+        "    covid_labels.append('CT_COVID') #append class label\\n\",\n",
+        "for i in range(len(noncovid_files)):\n",
+        "    image = cv2.imread(noncovid_files[i])\n",
+        "    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)\n",
+        "    image = cv2.resize(image,(224,224))\n",
+        "    noncovid_images.append(image)\n",
+        "    noncovid_labels.append('CT_NonCOVID')"
+      ],
+      "metadata": {
+        "id": "Jke-ufX8KeRE"
+      },
+      "execution_count": 23,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# Visualize First 40 Images from Data set"
+      ],
+      "metadata": {
+        "id": "KN_WmdePNNK1"
+      },
+      "execution_count": 25,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [],
+      "metadata": {
+        "id": "OtK-ZBOWNNQi"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [],
+      "metadata": {
+        "id": "nSe2srI6PPkF"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [],
+      "metadata": {
+        "id": "sBh8-DyHPPo1"
+      },
+      "execution_count": null,
+      "outputs": []
+    }
+  ]
+}
